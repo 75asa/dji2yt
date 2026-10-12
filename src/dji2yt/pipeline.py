@@ -71,9 +71,18 @@ class Pipeline:
 
     def _process(self, f: DriveFile, work) -> None:
         log.info("processing %s", f.name)
-        local = self.drive.download(f, work / strip_prefix(f.name))
-        info = probe(local)
-        shot_at = resolve_shot_time(f.name, self.tz, info.creation_time, f.created_time)
+        local = work / strip_prefix(f.name)
+        size_gb = f.size / 1e9
+        if self.dry_run:
+            # don't pull multi-GB files just to preview names/playlists
+            log.info("[dry-run] skip download (%.1f GB)", size_gb)
+            duration, probed_ct = f.duration, None
+        else:
+            log.info("downloading %s (%.1f GB)", f.name, size_gb)
+            self.drive.download(f, local)
+            info = probe(local)
+            duration, probed_ct = info.duration, info.creation_time
+        shot_at = resolve_shot_time(f.name, self.tz, probed_ct, f.created_time)
         new_name = f.name if is_prefixed(f.name) else prefixed_name(f.name, shot_at)
 
         if new_name != f.name and self.cfg.drive.rename_on_drive and not self.dry_run:
@@ -88,7 +97,7 @@ class Pipeline:
             name=new_name,
             local_path=local,
             shot_at=shot_at,
-            duration=info.duration,
+            duration=duration,
             title=new_name.rsplit(".", 1)[0],
             description=yc.description_template.format(**fmt),
             work_dir=work,
@@ -101,7 +110,11 @@ class Pipeline:
         log.info("labels=%s playlists=%s", ctx.labels, ctx.playlists)
 
         # derive before uploading so plugins can still adjust the main upload's playlists
-        derived = [(f"{p.name}:{d.key}", d) for p in self.plugins for d in p.derive(ctx)]
+        if self.dry_run:
+            log.info("[dry-run] skip derive() (needs the downloaded file)")
+            derived = []
+        else:
+            derived = [(f"{p.name}:{d.key}", d) for p in self.plugins for d in p.derive(ctx)]
 
         uploads: dict[str, str] = {}
         uploads["main"] = self._upload(

@@ -20,31 +20,55 @@ class DriveFile:
     name: str
     size: int
     created_time: datetime
+    duration: float = 0.0  # from Drive's videoMediaMetadata, 0 if not processed yet
 
 
 class Drive:
     def __init__(self, service):
         self.svc = service
 
-    def list_videos(self, folder_id: str, extensions: tuple[str, ...]) -> list[DriveFile]:
-        q = f"'{folder_id}' in parents and trashed = false and mimeType contains 'video/'"
-        files: list[DriveFile] = []
+    def _children(self, folder_id: str) -> list[dict]:
+        q = (
+            f"'{folder_id}' in parents and trashed = false and "
+            "(mimeType contains 'video/' or mimeType = 'application/vnd.google-apps.folder')"
+        )
+        items: list[dict] = []
         token = None
         while True:
             resp = (
                 self.svc.files()
                 .list(
                     q=q,
-                    fields="nextPageToken, files(id, name, size, createdTime)",
+                    fields="nextPageToken, files(id, name, mimeType, size, createdTime, videoMediaMetadata/durationMillis)",
                     pageSize=200,
                     pageToken=token,
-                    orderBy="createdTime",
                     supportsAllDrives=True,
                     includeItemsFromAllDrives=True,
                 )
                 .execute()
             )
-            for f in resp.get("files", []):
+            items += resp.get("files", [])
+            token = resp.get("nextPageToken")
+            if not token:
+                return items
+
+    def list_videos(
+        self, folder_id: str, extensions: tuple[str, ...], max_depth: int = 3
+    ) -> list[DriveFile]:
+        """Videos under ``folder_id``, including date subfolders (e.g. 20261012/).
+
+        DJI also uploads ``.LRF`` proxies with a video/mp4 MIME type; the
+        extension filter keeps only the real ``.MP4`` files.
+        """
+        files: list[DriveFile] = []
+        queue = [(folder_id, 0)]
+        while queue:
+            fid, depth = queue.pop(0)
+            for f in self._children(fid):
+                if f["mimeType"] == "application/vnd.google-apps.folder":
+                    if depth < max_depth:
+                        queue.append((f["id"], depth + 1))
+                    continue
                 if not f["name"].lower().endswith(extensions):
                     continue
                 files.append(
@@ -53,11 +77,11 @@ class Drive:
                         name=f["name"],
                         size=int(f.get("size", 0)),
                         created_time=datetime.fromisoformat(f["createdTime"].replace("Z", "+00:00")),
+                        duration=int(f.get("videoMediaMetadata", {}).get("durationMillis", 0)) / 1000,
                     )
                 )
-            token = resp.get("nextPageToken")
-            if not token:
-                return files
+        files.sort(key=lambda f: f.created_time)
+        return files
 
     def download(self, file: DriveFile, dest: Path) -> Path:
         dest.parent.mkdir(parents=True, exist_ok=True)
