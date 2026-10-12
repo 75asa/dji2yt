@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import shutil
 from zoneinfo import ZoneInfo
@@ -10,10 +11,11 @@ from googleapiclient.discovery import build
 
 from .auth import load_credentials
 from .config import Config
-from .drive import Drive, DriveFile
+from .drive import Drive
 from .media import probe
 from .naming import is_prefixed, prefixed_name, resolve_shot_time, strip_prefix
 from .plugins import Plugin, Services, VideoContext, load_plugins
+from .sources import DriveSource, LocalSource, SourceFile
 from .state import State
 from .youtube import QuotaExceeded, YouTube
 
@@ -32,7 +34,16 @@ class Pipeline:
             calendar=build("calendar", "v3", credentials=creds, cache_discovery=False),
             tz=self.tz,
         )
-        self.drive = Drive(self.services.drive)
+        if cfg.local:
+            self.source = LocalSource(
+                cfg.local.path, cfg.local.extensions, cfg.local.min_age_minutes
+            )
+            self.rename_enabled = cfg.local.rename
+        else:
+            self.source = DriveSource(
+                Drive(self.services.drive), cfg.drive.folder_id, cfg.drive.extensions
+            )
+            self.rename_enabled = cfg.drive.rename_on_drive
         self.yt = YouTube(self.services.youtube)
         self.state = State(cfg.state_path)
         self.plugins: list[Plugin] = load_plugins(
@@ -42,11 +53,7 @@ class Pipeline:
     # ------------------------------------------------------------------
     def run(self, limit: int | None = None) -> None:
         limit = limit or self.cfg.youtube.max_uploads_per_run
-        files = [
-            f
-            for f in self.drive.list_videos(self.cfg.drive.folder_id, self.cfg.drive.extensions)
-            if not self.state.is_done(f.id)
-        ]
+        files = [f for f in self.source.list() if not self.state.is_done(f.id)]
         log.info("%d new video(s) found", len(files))
         for f in files[:limit]:
             try:
@@ -60,8 +67,8 @@ class Pipeline:
                     self.state.mark(f.id, f.name, "failed", repr(e))
 
     # ------------------------------------------------------------------
-    def process(self, f: DriveFile) -> None:
-        work = self.cfg.work_dir / f.id
+    def process(self, f: SourceFile) -> None:
+        work = self.cfg.work_dir / hashlib.sha1(f.id.encode()).hexdigest()[:12]
         work.mkdir(parents=True, exist_ok=True)
         try:
             self._process(f, work)
@@ -69,31 +76,40 @@ class Pipeline:
             if not self.dry_run:
                 shutil.rmtree(work, ignore_errors=True)
 
-    def _process(self, f: DriveFile, work) -> None:
-        log.info("processing %s", f.name)
-        local = work / strip_prefix(f.name)
-        size_gb = f.size / 1e9
-        if self.dry_run:
+    def _process(self, f: SourceFile, work) -> None:
+        log.info("processing %s (%.1f GB)", f.name, f.size / 1e9)
+        original = strip_prefix(f.name)
+        if self.source.is_local:
+            local = self.source.fetch(f, work)
+            info = probe(local)
+            duration, probed_ct = info.duration, info.creation_time
+        elif self.dry_run:
             # don't pull multi-GB files just to preview names/playlists
-            log.info("[dry-run] skip download (%.1f GB)", size_gb)
+            log.info("[dry-run] skip download")
+            local = work / original
             duration, probed_ct = f.duration, None
         else:
-            log.info("downloading %s (%.1f GB)", f.name, size_gb)
-            self.drive.download(f, local)
+            local = self.source.fetch(f, work)
             info = probe(local)
             duration, probed_ct = info.duration, info.creation_time
         shot_at = resolve_shot_time(f.name, self.tz, probed_ct, f.created_time)
         new_name = f.name if is_prefixed(f.name) else prefixed_name(f.name, shot_at)
 
-        if new_name != f.name and self.cfg.drive.rename_on_drive and not self.dry_run:
-            self.drive.rename(f.id, new_name)
-            log.info("renamed on Drive: %s -> %s", f.name, new_name)
+        if new_name != f.name and self.rename_enabled:
+            if self.dry_run:
+                log.info("[dry-run] rename %s -> %s", f.name, new_name)
+            else:
+                old_name = f.name
+                renamed = self.source.rename(f, new_name)
+                if renamed is not None:
+                    local = renamed
+                log.info("renamed %s -> %s", old_name, new_name)
 
         yc = self.cfg.youtube
-        fmt = {"shot_at": shot_at, "original_name": strip_prefix(f.name), "name": new_name}
+        fmt = {"shot_at": shot_at, "original_name": original, "name": new_name}
         ctx = VideoContext(
             drive_id=f.id,
-            original_name=strip_prefix(f.name),
+            original_name=original,
             name=new_name,
             local_path=local,
             shot_at=shot_at,
@@ -111,7 +127,7 @@ class Pipeline:
 
         # derive before uploading so plugins can still adjust the main upload's playlists
         if self.dry_run:
-            log.info("[dry-run] skip derive() (needs the downloaded file)")
+            log.info("[dry-run] skip derive()")
             derived = []
         else:
             derived = [(f"{p.name}:{d.key}", d) for p in self.plugins for d in p.derive(ctx)]

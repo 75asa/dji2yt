@@ -16,6 +16,14 @@ class DriveConfig:
 
 
 @dataclass
+class LocalConfig:
+    path: Path
+    rename: bool = True
+    extensions: tuple[str, ...] = (".mp4",)
+    min_age_minutes: float = 10  # skip files still being written / synced
+
+
+@dataclass
 class YouTubeConfig:
     privacy: str = "unlisted"
     # Playlist every upload goes into. Formatted with `shot_at` (datetime).
@@ -29,7 +37,8 @@ class YouTubeConfig:
 
 @dataclass
 class Config:
-    drive: DriveConfig
+    drive: DriveConfig | None = None
+    local: LocalConfig | None = None
     youtube: YouTubeConfig = field(default_factory=YouTubeConfig)
     timezone: str = "Asia/Tokyo"
     work_dir: Path = Path("work")
@@ -48,18 +57,31 @@ def load_config(path: str | Path) -> Config:
         v = Path(raw.get(key, default))
         return v if v.is_absolute() else base / v
 
-    drive_raw = raw["drive"]
-    drive = DriveConfig(
-        folder_id=drive_raw["folder_id"],
-        rename_on_drive=drive_raw.get("rename_on_drive", True),
-        extensions=tuple(e.lower() for e in drive_raw.get("extensions", [".mp4"])),
-    )
+    drive = local = None
+    if "local" in raw:
+        lr = raw["local"]
+        local = LocalConfig(
+            path=Path(lr["path"]).expanduser(),
+            rename=lr.get("rename", True),
+            extensions=tuple(e.lower() for e in lr.get("extensions", [".mp4"])),
+            min_age_minutes=lr.get("min_age_minutes", 10),
+        )
+    elif "drive" in raw:
+        dr = raw["drive"]
+        drive = DriveConfig(
+            folder_id=dr["folder_id"],
+            rename_on_drive=dr.get("rename_on_drive", True),
+            extensions=tuple(e.lower() for e in dr.get("extensions", [".mp4"])),
+        )
+    else:
+        raise SystemExit("config needs a [local] or [drive] section")
     youtube = YouTubeConfig(**raw.get("youtube", {}))
 
     plugins_raw = dict(raw.get("plugins", {}))
     enabled = plugins_raw.pop("enabled", [])
     return Config(
         drive=drive,
+        local=local,
         youtube=youtube,
         timezone=raw.get("timezone", "Asia/Tokyo"),
         work_dir=p("work_dir", "work"),

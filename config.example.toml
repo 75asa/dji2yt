@@ -5,10 +5,19 @@ state_path = "state.db"
 client_secret_path = "client_secret.json"   # OAuth client (Desktop app) from Google Cloud Console
 token_path = "token.json"                   # created by `dji2yt auth`
 
-[drive]
-folder_id = "1kGwGAhObyosm2aHiizjvqaPhDm9ctoHv"
-rename_on_drive = true
+# Source: a folder synced by Google Drive for desktop (recommended on a Mac).
+# Renames sync back to Drive; date subfolders (20261012/) are scanned too.
+[local]
+path = "~/Library/CloudStorage/GoogleDrive-real.nagorid@gmail.com/マイドライブ/DJI Device/OsmoPocket4PTCWACN"
+rename = true
 extensions = [".mp4"]
+min_age_minutes = 10   # skip files still syncing
+
+# ...or the Drive API (e.g. when running in the cloud). Use one or the other.
+# [drive]
+# folder_id = "1kGwGAhObyosm2aHiizjvqaPhDm9ctoHv"
+# rename_on_drive = true
+# extensions = [".mp4"]
 
 [youtube]
 privacy = "unlisted"

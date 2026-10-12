@@ -4,7 +4,7 @@ Google Drive に自動アップロードされる DJI の動画を、YouTube に
 後処理はプラグインで差し込める（同梱: テニス）。
 
 ```
-Drive フォルダ ──▶ ダウンロード ──▶ 撮影日時で prefix リネーム（Drive 側も）
+同期フォルダ / Drive API ──▶ 撮影日時で prefix リネーム（Drive に同期される）
                                         │
                      plugins.annotate()  ← 分類・再生リスト追加・タグ付け
                      plugins.derive()    ← 派生動画を生成（例: ラリーカット）
@@ -27,6 +27,12 @@ cp config.example.toml config.toml   # folder_id などを編集
 ```
 
 ffmpeg / ffprobe が PATH 上に必要（`brew install ffmpeg`）。
+
+## 入力元
+
+- `[local]`（Mac 推奨）: Google Drive for desktop の同期フォルダを直接読む。API でのダウンロードが不要で、
+  リネームは自動で Drive に反映される。Drive のアカウントと YouTube 用に認証したアカウントが違っても OK
+- `[drive]`: Drive API でダウンロード（クラウド実行向け）。日付サブフォルダもたどる
 
 ## 定期実行
 
