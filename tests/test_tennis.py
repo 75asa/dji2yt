@@ -11,7 +11,7 @@ JST = ZoneInfo("Asia/Tokyo")
 class FakeCalendar:
     def __init__(self, events):
         # events: list of title strings or (title, location) tuples
-        self.events = [e if isinstance(e, tuple) else (e, "") for e in events]
+        self._events = [e if isinstance(e, tuple) else (e, "") for e in events]
 
     def events(self):
         return self
@@ -21,7 +21,7 @@ class FakeCalendar:
         return self
 
     def execute(self):
-        return {"items": [{"summary": t, "location": loc} for t, loc in self.events]}
+        return {"items": [{"summary": t, "location": loc} for t, loc in self._events]}
 
 
 def _ctx():
