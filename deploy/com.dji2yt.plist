@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- cp deploy/com.dji2yt.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.dji2yt.plist -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.dji2yt</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/YOU/dji2yt/.venv/bin/dji2yt</string>
+    <string>-c</string><string>/Users/YOU/dji2yt/config.toml</string>
+    <string>run</string>
+  </array>
+  <key>WorkingDirectory</key><string>/Users/YOU/dji2yt</string>
+  <key>EnvironmentVariables</key>
+  <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string></dict>
+  <key>StartInterval</key><integer>900</integer>
+  <key>StandardOutPath</key><string>/Users/YOU/dji2yt/dji2yt.log</string>
+  <key>StandardErrorPath</key><string>/Users/YOU/dji2yt/dji2yt.log</string>
+</dict>
+</plist>

@@ -1,0 +1,40 @@
+# Copy to config.toml and edit.
+timezone = "Asia/Tokyo"
+work_dir = "work"
+state_path = "state.db"
+client_secret_path = "client_secret.json"   # OAuth client (Desktop app) from Google Cloud Console
+token_path = "token.json"                   # created by `dji2yt auth`
+
+[drive]
+folder_id = "1kGwGAhObyosm2aHiizjvqaPhDm9ctoHv"
+rename_on_drive = true
+extensions = [".mp4"]
+
+[youtube]
+privacy = "unlisted"
+playlist_template = "{shot_at:%Y-%m-%d} DJI"   # "" to disable, "DJI" for a single playlist
+playlist_privacy = "unlisted"
+category_id = "17"                             # Sports
+description_template = "Shot at {shot_at:%Y-%m-%d %H:%M}\nOriginal: {original_name}"
+max_uploads_per_run = 5                        # videos.insert is quota-heavy
+
+[plugins]
+enabled = ["tennis"]
+
+[plugins.tennis]
+calendar_ids = ["primary"]
+match_keywords = ["試合", "大会", "match"]
+practice_keywords = ["練習", "レッスン", "テニス", "practice"]
+margin_minutes = 30
+match_playlist = "MyTennisMatch"
+practice_playlist = "MyTennisPractice"
+rallycut = true
+playlist_target = "cut"    # cut | full | both
+
+[plugins.tennis.rallycut_settings]
+sensitivity = 10.0  # raise if too many false hits
+max_gap = 4.0       # seconds between hits within one rally
+min_hits = 3
+pre = 2.0
+post = 2.5
+reencode = false    # true = frame-accurate but slow

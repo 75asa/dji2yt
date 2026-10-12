@@ -1,39 +1,76 @@
 # dji2yt
 
-Google Drive に自動アップロードされる DJI の動画を YouTube に自動公開するパイプライン。
-
-## やること
-
-1. Drive の監視フォルダから新しい `.mp4` を取得
-2. 撮影日時を prefix にリネーム（例: `2026-10-12_1530_DJI_0001.mp4`）
-3. YouTube に **限定公開** でアップロード（resumable upload）
-4. 再生リストに追加（日付ごと / 共通）
-5. テニスの動画は Google カレンダーの予定と撮影時刻を突き合わせて
-   `MyTennisMatch` / `MyTennisPractice` にも追加
-6. （任意）打球音検出でポイント間のデッドタイムをカットしたダイジェスト版も作成
-
-## 構成
+Google Drive に自動アップロードされる DJI の動画を、YouTube に限定公開で自動アップロードするツール。
+後処理はプラグインで差し込める（同梱: テニス）。
 
 ```
-src/dji2yt/
-  config.py      設定（フォルダ ID、再生リスト名など）
-  drive.py       Drive から新規動画を列挙・ダウンロード
-  naming.py      撮影日時の抽出とリネーム
-  youtube.py     アップロード・再生リスト操作
-  classify.py    カレンダー照合でテニス試合/練習を判定
-  rallycut.py    打球音検出によるラリー切り出し
-  state.py       処理済み管理（二重アップロード防止）
-  main.py        エントリポイント
+Drive フォルダ ──▶ ダウンロード ──▶ 撮影日時で prefix リネーム（Drive 側も）
+                                        │
+                     plugins.annotate()  ← 分類・再生リスト追加・タグ付け
+                     plugins.derive()    ← 派生動画を生成（例: ラリーカット）
+                                        │
+                     YouTube へ限定公開アップロード ──▶ 再生リストに追加
 ```
 
-## 実行環境
+## セットアップ
 
-ローカル（Mac + launchd）でもクラウド（Cloud Run Jobs + Cloud Scheduler）でも
-同じコンテナで動くようにする。
+1. Google Cloud でプロジェクトを作り、**YouTube Data API v3 / Drive API / Calendar API** を有効化
+2. OAuth クライアント（デスクトップアプリ）を作成し、`client_secret.json` として保存
+3. インストールと認証
+
+```bash
+python -m venv .venv && .venv/bin/pip install -e .
+cp config.example.toml config.toml   # folder_id などを編集
+.venv/bin/dji2yt auth                # ブラウザでログイン → token.json
+.venv/bin/dji2yt run --dry-run       # アップロードせずに挙動だけ確認
+.venv/bin/dji2yt run
+```
+
+ffmpeg / ffprobe が PATH 上に必要（`brew install ffmpeg`）。
+
+## 定期実行
+
+- **Mac**: `deploy/com.dji2yt.plist` のパスを書き換えて `~/Library/LaunchAgents/` に置き、`launchctl load`（15 分ごと）
+- **クラウド**: `Dockerfile` をビルドして Cloud Run Jobs + Cloud Scheduler で実行。
+  `/data` に `config.toml` / `token.json` / `state.db` を置く（GCS マウント推奨、token は Secret Manager でも可）
+
+## プラグイン
+
+`dji2yt.plugins` エントリポイントで登録された `Plugin` サブクラスが読み込まれ、
+`config.toml` の `[plugins] enabled` の順に実行される。
+
+```python
+from dji2yt.plugins import Plugin, VideoContext, Derivative
+
+class MyPlugin(Plugin):
+    def annotate(self, ctx: VideoContext) -> None:
+        if ctx.duration > 3600:
+            ctx.add_playlist("Long videos")
+
+    def derive(self, ctx: VideoContext) -> list[Derivative]:
+        return []
+```
+
+```toml
+# 別パッケージの pyproject.toml
+[project.entry-points."dji2yt.plugins"]
+myplugin = "my_package:MyPlugin"
+```
+
+`dji2yt plugins` でインストール済みプラグインを一覧できる。
+
+### tennis（同梱）
+
+- 撮影時間帯と重なる Google カレンダーの予定名で **試合 / 練習** を判定し、
+  `MyTennisMatch` / `MyTennisPractice` に追加する
+- **ラリーカット**: 打球音（1.5kHz 以上の過渡音）を検出し、ラリー以外の時間を削った版を別動画として追加でアップロードする
+- しきい値の調整は手元のファイルで行う:
+  `dji2yt rallycut match.mp4 --out cut.mp4`
 
 ## 注意
 
-- 2020/7/28 以降に作成された未監査の API プロジェクトからアップロードした動画は
-  強制的に非公開になる。限定公開にするには YouTube API の監査申請が必要。
-- `videos.insert` はクォータ消費が大きく、デフォルト枠だと 1 日数本が上限。
-- OAuth のクライアントシークレットやトークンは絶対にコミットしないこと。
+- 2020/7/28 以降に作成された **未監査の API プロジェクト** からアップロードした動画は、強制的に非公開になる。
+  限定公開にするには YouTube API の監査申請が必要（未監査の間はログに警告が出る）。
+- `videos.insert` はクォータ消費が大きい。上限に達した場合はその回の処理を止め、残りは次回に回す。
+- 処理状態は `state.db` に保存しているので、途中で失敗しても二重アップロードにはならない。
+- `client_secret*.json` / `token*.json` / `config.toml` は `.gitignore` 済み。

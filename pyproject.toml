@@ -1,14 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "dji2yt"
 version = "0.1.0"
-description = "Auto-upload DJI videos from Google Drive to YouTube with playlists and tennis rally cuts"
+description = "Auto-upload DJI videos from Google Drive to YouTube, with playlists and pluggable post-processing (e.g. tennis rally cuts)"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-  "google-api-python-client>=2.0",
+  "google-api-python-client>=2.100",
   "google-auth-oauthlib>=1.0",
-  "librosa>=0.10",
-  "numpy",
+  "numpy>=1.26",
 ]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
 
 [project.scripts]
 dji2yt = "dji2yt.main:main"
+
+# Built-in plugins are registered exactly like third-party ones would be.
+[project.entry-points."dji2yt.plugins"]
+tennis = "dji2yt.plugins.tennis:TennisPlugin"
+
+[tool.setuptools.packages.find]
+where = ["src"]
