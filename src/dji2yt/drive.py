@@ -39,7 +39,10 @@ class Drive:
                 self.svc.files()
                 .list(
                     q=q,
-                    fields="nextPageToken, files(id, name, mimeType, size, createdTime, videoMediaMetadata/durationMillis)",
+                    fields=(
+                        "nextPageToken, files(id, name, mimeType, size, createdTime, "
+                        "videoMediaMetadata/durationMillis)"
+                    ),
                     pageSize=200,
                     pageToken=token,
                     supportsAllDrives=True,
@@ -76,8 +79,11 @@ class Drive:
                         id=f["id"],
                         name=f["name"],
                         size=int(f.get("size", 0)),
-                        created_time=datetime.fromisoformat(f["createdTime"].replace("Z", "+00:00")),
-                        duration=int(f.get("videoMediaMetadata", {}).get("durationMillis", 0)) / 1000,
+                        created_time=datetime.fromisoformat(
+                            f["createdTime"].replace("Z", "+00:00")
+                        ),
+                        duration=int(f.get("videoMediaMetadata", {}).get("durationMillis", 0))
+                        / 1000,
                     )
                 )
         files.sort(key=lambda f: f.created_time)

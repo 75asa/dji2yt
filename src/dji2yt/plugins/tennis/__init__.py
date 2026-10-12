@@ -40,9 +40,7 @@ class TennisPlugin(Plugin):
         super().setup(settings, services)
         s = settings
         self.calendar_ids = s.get("calendar_ids", ["primary"])
-        self.tennis_kw = [
-            k.lower() for k in s.get("tennis_keywords", ["テニス", "庭球", "tennis"])
-        ]
+        self.tennis_kw = [k.lower() for k in s.get("tennis_keywords", ["テニス", "庭球", "tennis"])]
         self.match_kw = [
             k.lower()
             for k in s.get("match_keywords", ["vs", "試合", "大会", "実業団", "リーグ", "match"])
@@ -108,8 +106,13 @@ class TennisPlugin(Plugin):
         segs = detect_rallies(ctx.local_path, self.rc)
         kept = sum(b - a for a, b in segs)
         ratio = kept / ctx.duration if ctx.duration else 0
-        log.info("rallycut: %d rallies, %.0fs/%.0fs kept (%.0f%%)",
-                 len(segs), kept, ctx.duration, ratio * 100)
+        log.info(
+            "rallycut: %d rallies, %.0fs/%.0fs kept (%.0f%%)",
+            len(segs),
+            kept,
+            ctx.duration,
+            ratio * 100,
+        )
         if not segs or ratio < self.rc.min_keep_ratio:
             log.warning("rallycut: detection looks unreliable, skipping cut version")
             if self.target == "cut":  # fall back so the video still lands in the playlist

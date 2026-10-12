@@ -18,6 +18,7 @@ YouTube に限定公開でアップロードして再生リストに入れる個
 
 ```bash
 python -m venv .venv && .venv/bin/pip install -e '.[dev]'
+.venv/bin/ruff check . && .venv/bin/ruff format --check .   # CI と同じ lint
 .venv/bin/pytest -q
 .venv/bin/dji2yt run --dry-run --limit 3      # リネーム・アップロードをせずに確認
 .venv/bin/dji2yt rallycut <file> --out cut.mp4  # ラリー検出の調整用

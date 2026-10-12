@@ -26,9 +26,16 @@ class FakeCalendar:
 
 def _ctx():
     return VideoContext(
-        drive_id="x", original_name="a.mp4", name="a.mp4", local_path=Path("a.mp4"),
-        shot_at=datetime(2026, 10, 12, 10, 0, tzinfo=JST), duration=3600,
-        title="a", description="", work_dir=Path("."), playlists=["2026-10-12 DJI"],
+        drive_id="x",
+        original_name="a.mp4",
+        name="a.mp4",
+        local_path=Path("a.mp4"),
+        shot_at=datetime(2026, 10, 12, 10, 0, tzinfo=JST),
+        duration=3600,
+        title="a",
+        description="",
+        work_dir=Path("."),
+        playlists=["2026-10-12 DJI"],
     )
 
 
@@ -40,8 +47,10 @@ def _plugin(titles, **settings):
 
 
 def test_match_beats_practice():
-    p = _plugin(["テニス部", ("関西庭球部実業団 vs 小野薬品＠くにじま#11-12", "くにじまテニスコート")],
-                playlist_target="full")
+    p = _plugin(
+        ["テニス部", ("関西庭球部実業団 vs 小野薬品＠くにじま#11-12", "くにじまテニスコート")],
+        playlist_target="full",
+    )
     ctx = _ctx()
     p.annotate(ctx)
     assert ctx.labels["tennis"] == "match"

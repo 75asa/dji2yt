@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from .drive import Drive
@@ -68,7 +68,7 @@ class LocalSource:
                     id=f"local:{strip_prefix(p.name)}",
                     name=p.name,
                     size=st.st_size,
-                    created_time=datetime.fromtimestamp(st.st_mtime, timezone.utc),
+                    created_time=datetime.fromtimestamp(st.st_mtime, UTC),
                     path=p,
                 )
             )
