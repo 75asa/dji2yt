@@ -1,7 +1,9 @@
 """Tennis plugin.
 
-* Classifies a video as a match / practice by looking for an overlapping
-  Google Calendar event whose title contains one of the configured keywords.
+* Finds an overlapping Google Calendar event that looks like tennis
+  (``tennis_keywords`` in the title *or* location, e.g. "テニス部",
+  "くにじまテニスコート"). It is a match if the title also contains one of
+  ``match_keywords`` (e.g. "vs", "実業団"), otherwise practice.
 * Adds it to MyTennisMatch / MyTennisPractice.
 * Optionally uploads a "rally cut" version with the dead time between points
   removed (see :mod:`.rallycut`).
@@ -9,8 +11,8 @@
 Settings (``[plugins.tennis]`` in config.toml)::
 
     calendar_ids      = ["primary"]
-    match_keywords    = ["試合", "大会", "match"]
-    practice_keywords = ["練習", "レッスン", "テニス", "practice"]
+    tennis_keywords   = ["テニス", "庭球", "tennis"]
+    match_keywords    = ["vs", "試合", "大会", "実業団", "リーグ", "match"]
     margin_minutes    = 30
     match_playlist    = "MyTennisMatch"
     practice_playlist = "MyTennisPractice"
@@ -38,9 +40,12 @@ class TennisPlugin(Plugin):
         super().setup(settings, services)
         s = settings
         self.calendar_ids = s.get("calendar_ids", ["primary"])
-        self.match_kw = [k.lower() for k in s.get("match_keywords", ["試合", "大会", "match"])]
-        self.practice_kw = [
-            k.lower() for k in s.get("practice_keywords", ["練習", "レッスン", "テニス", "practice"])
+        self.tennis_kw = [
+            k.lower() for k in s.get("tennis_keywords", ["テニス", "庭球", "tennis"])
+        ]
+        self.match_kw = [
+            k.lower()
+            for k in s.get("match_keywords", ["vs", "試合", "大会", "実業団", "リーグ", "match"])
         ]
         self.margin = timedelta(minutes=s.get("margin_minutes", 30))
         self.playlists = {
@@ -73,10 +78,12 @@ class TennisPlugin(Plugin):
             )
             for ev in resp.get("items", []):
                 title = ev.get("summary", "")
-                t = title.lower()
-                if any(k in t for k in self.match_kw):
+                haystack = f"{title} {ev.get('location', '')}".lower()
+                if not any(k in haystack for k in self.tennis_kw):
+                    continue
+                if any(k in title.lower() for k in self.match_kw):
                     return "match", title  # match wins over practice
-                if kind is None and any(k in t for k in self.practice_kw):
+                if kind is None:
                     kind, event_title = "practice", title
         return kind, event_title
 

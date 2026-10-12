@@ -33,8 +33,8 @@ enabled = ["tennis"]
 
 [plugins.tennis]
 calendar_ids = ["primary"]
-match_keywords = ["試合", "大会", "match"]
-practice_keywords = ["練習", "レッスン", "テニス", "practice"]
+tennis_keywords = ["テニス", "庭球", "tennis"]                 # title or location
+match_keywords = ["vs", "試合", "大会", "実業団", "リーグ", "match"]   # title; else practice
 margin_minutes = 30
 match_playlist = "MyTennisMatch"
 practice_playlist = "MyTennisPractice"
