@@ -48,6 +48,7 @@ ffmpeg / ffprobe が PATH 上に必要（`brew install ffmpeg`）。
 ```python
 from dji2yt.plugins import Plugin, VideoContext, Derivative
 
+
 class MyPlugin(Plugin):
     def annotate(self, ctx: VideoContext) -> None:
         if ctx.duration > 3600:
@@ -72,6 +73,18 @@ myplugin = "my_package:MyPlugin"
 - **ラリーカット**: 打球音（1.5kHz 以上の過渡音）を検出し、ラリー以外の時間を削った版を別動画として追加でアップロードする
 - しきい値の調整は手元のファイルで行う:
   `dji2yt rallycut match.mp4 --out cut.mp4`
+
+## 開発
+
+```bash
+mise install                                   # .python-version の Python（3.14）
+python -m venv .venv && .venv/bin/pip install -e '.[dev]'
+.venv/bin/ruff check .
+.venv/bin/ruff format --check .
+.venv/bin/pytest -q                            # 一部のテストは ffmpeg を呼ぶ
+```
+
+CI（GitHub Actions）も同じ 3 つを実行する。サポートの下限は Python 3.11。
 
 ## 注意
 

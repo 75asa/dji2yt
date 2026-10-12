@@ -3,8 +3,8 @@ import wave
 
 import numpy as np
 
-from dji2yt.plugins.tennis.rallycut import SR, cut_video, detect_rallies, group_rallies
 from dji2yt.media import probe
+from dji2yt.plugins.tennis.rallycut import SR, cut_video, detect_rallies, group_rallies
 
 
 def test_group_rallies_drops_singletons_and_merges():
@@ -28,15 +28,35 @@ def _synth(tmp_path, hits, duration=60.0):
     for h in hits:
         i = int(h * SR)
         click = rng.normal(0, 0.6, 400) * np.exp(-np.arange(400) / 60)
-        audio[i:i + 400] += click
+        audio[i : i + 400] += click
     wav = tmp_path / "a.wav"
     with wave.open(str(wav), "wb") as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(SR)
         w.writeframes((np.clip(audio, -1, 1) * 32767).astype(np.int16).tobytes())
     mp4 = tmp_path / "v.mp4"
     subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"color=c=green:s=320x180:r=30:d={duration}",
-         "-i", str(wav), "-c:v", "libx264", "-g", "30", "-c:a", "aac", "-shortest", str(mp4)],
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-y",
+            "-f",
+            "lavfi",
+            "-i",
+            f"color=c=green:s=320x180:r=30:d={duration}",
+            "-i",
+            str(wav),
+            "-c:v",
+            "libx264",
+            "-g",
+            "30",
+            "-c:a",
+            "aac",
+            "-shortest",
+            str(mp4),
+        ],
         check=True,
     )
     return mp4

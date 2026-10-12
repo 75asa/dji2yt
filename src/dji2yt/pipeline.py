@@ -153,8 +153,14 @@ class Pipeline:
         )
         for key, d in derived:
             uploads[key] = self._upload(
-                f.id, key, d.path, d.title, d.description or ctx.description,
-                d.tags or ctx.tags, d.playlists, shot_at,
+                f.id,
+                key,
+                d.path,
+                d.title,
+                d.description or ctx.description,
+                d.tags or ctx.tags,
+                d.playlists,
+                shot_at,
             )
         for p in self.plugins:
             p.after_upload(ctx, uploads)
@@ -172,7 +178,12 @@ class Pipeline:
         video_id = self.state.uploaded(drive_id, key)
         if video_id is None:
             video_id = self.yt.upload(
-                path, title, description, tags, yc.privacy, yc.category_id,
+                path,
+                title,
+                description,
+                tags,
+                yc.privacy,
+                yc.category_id,
                 recorded_at=shot_at.isoformat(),
             )
             self.state.record_upload(drive_id, key, video_id)

@@ -77,7 +77,9 @@ class YouTube:
         if actual != privacy:
             log.warning(
                 "video %s is %s (requested %s). Unaudited API projects force private uploads.",
-                video_id, actual, privacy,
+                video_id,
+                actual,
+                privacy,
             )
         return video_id
 

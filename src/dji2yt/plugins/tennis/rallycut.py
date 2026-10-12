@@ -38,7 +38,7 @@ class RallyCutSettings:
     reencode: bool = False  # True = frame-accurate cuts, much slower
 
     @classmethod
-    def from_dict(cls, d: dict) -> "RallyCutSettings":
+    def from_dict(cls, d: dict) -> RallyCutSettings:
         names = cls.__dataclass_fields__.keys()
         return cls(**{k: v for k, v in d.items() if k in names})
 
@@ -46,8 +46,21 @@ class RallyCutSettings:
 # ---- audio ---------------------------------------------------------------
 def load_audio(path: Path) -> np.ndarray:
     raw = subprocess.run(
-        ["ffmpeg", "-v", "error", "-i", str(path), "-vn", "-ac", "1", "-ar", str(SR),
-         "-f", "s16le", "-"],
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-i",
+            str(path),
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            str(SR),
+            "-f",
+            "s16le",
+            "-",
+        ],
         check=True,
         capture_output=True,
     ).stdout
@@ -127,9 +140,7 @@ def group_rallies(
         else:
             groups.append([h])
     segs = [
-        (max(0.0, g[0] - pre), min(duration, g[-1] + post))
-        for g in groups
-        if len(g) >= min_hits
+        (max(0.0, g[0] - pre), min(duration, g[-1] + post)) for g in groups if len(g) >= min_hits
     ]
     merged: list[tuple[float, float]] = []
     for a, b in segs:
@@ -169,8 +180,24 @@ def cut_video(
     )
     try:
         subprocess.run(
-            ["ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listfile,
-             *codec, "-avoid_negative_ts", "make_zero", "-movflags", "+faststart", str(out)],
+            [
+                "ffmpeg",
+                "-v",
+                "error",
+                "-y",
+                "-f",
+                "concat",
+                "-safe",
+                "0",
+                "-i",
+                listfile,
+                *codec,
+                "-avoid_negative_ts",
+                "make_zero",
+                "-movflags",
+                "+faststart",
+                str(out),
+            ],
             check=True,
         )
     finally:

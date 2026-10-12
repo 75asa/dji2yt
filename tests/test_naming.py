@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from zoneinfo import ZoneInfo
 
 from dji2yt.naming import is_prefixed, prefixed_name, resolve_shot_time, shot_time_from_name
@@ -12,7 +12,7 @@ def test_parse_new_dji_name():
 
 
 def test_old_dji_name_falls_back_to_probe():
-    probed = datetime(2026, 10, 12, 6, 30, tzinfo=timezone.utc)
+    probed = datetime(2026, 10, 12, 6, 30, tzinfo=UTC)
     t = resolve_shot_time("DJI_0001.MP4", JST, probed=probed)
     assert t == datetime(2026, 10, 12, 15, 30, tzinfo=JST)
 
