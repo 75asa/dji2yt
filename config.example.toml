@@ -4,6 +4,7 @@ work_dir = "work"
 state_path = "state.db"
 client_secret_path = "client_secret.json"   # OAuth client (Desktop app) from Google Cloud Console
 token_path = "token.json"                   # created by `dji2yt auth`
+since = "2026-10-12"   # ignore videos shot before this date (avoid uploading the whole backlog)
 
 # Source: a folder synced by Google Drive for desktop (recommended on a Mac).
 # Renames sync back to Drive; date subfolders (20261012/) are scanned too.

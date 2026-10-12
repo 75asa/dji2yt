@@ -45,6 +45,7 @@ class Config:
     state_path: Path = Path("state.db")
     client_secret_path: Path = Path("client_secret.json")
     token_path: Path = Path("token.json")
+    since: str | None = None  # "YYYY-MM-DD": ignore videos shot before this date
     plugins_enabled: list[str] = field(default_factory=list)
     plugin_settings: dict[str, dict[str, Any]] = field(default_factory=dict)
 
@@ -84,6 +85,7 @@ def load_config(path: str | Path) -> Config:
         local=local,
         youtube=youtube,
         timezone=raw.get("timezone", "Asia/Tokyo"),
+        since=str(raw["since"]) if "since" in raw else None,
         work_dir=p("work_dir", "work"),
         state_path=p("state_path", "state.db"),
         client_secret_path=p("client_secret_path", "client_secret.json"),

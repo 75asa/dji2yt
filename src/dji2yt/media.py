@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 from dataclasses import dataclass
 from datetime import datetime
@@ -31,3 +32,11 @@ def probe(path: Path) -> ProbeResult:
         except ValueError:
             created = None
     return ProbeResult(duration=float(fmt.get("duration", 0.0)), creation_time=created)
+
+
+def require_ffmpeg() -> None:
+    missing = [t for t in ("ffmpeg", "ffprobe") if shutil.which(t) is None]
+    if missing:
+        raise SystemExit(
+            f"{', '.join(missing)} not found on PATH. Install with `brew install ffmpeg`."
+        )

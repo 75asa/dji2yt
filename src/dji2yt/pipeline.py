@@ -12,8 +12,14 @@ from googleapiclient.discovery import build
 from .auth import load_credentials
 from .config import Config
 from .drive import Drive
-from .media import probe
-from .naming import is_prefixed, prefixed_name, resolve_shot_time, strip_prefix
+from .media import probe, require_ffmpeg
+from .naming import (
+    is_prefixed,
+    prefixed_name,
+    resolve_shot_time,
+    shot_time_from_name,
+    strip_prefix,
+)
 from .plugins import Plugin, Services, VideoContext, load_plugins
 from .sources import DriveSource, LocalSource, SourceFile
 from .state import State
@@ -27,6 +33,7 @@ class Pipeline:
         self.cfg = cfg
         self.dry_run = dry_run
         self.tz = ZoneInfo(cfg.timezone)
+        require_ffmpeg()
         creds = load_credentials(cfg.token_path)
         self.services = Services(
             drive=build("drive", "v3", credentials=creds, cache_discovery=False),
@@ -54,6 +61,10 @@ class Pipeline:
     def run(self, limit: int | None = None) -> None:
         limit = limit or self.cfg.youtube.max_uploads_per_run
         files = [f for f in self.source.list() if not self.state.is_done(f.id)]
+        if self.cfg.since:
+            before = len(files)
+            files = [f for f in files if not self._before_since(f)]
+            log.info("since=%s: skipped %d older video(s)", self.cfg.since, before - len(files))
         log.info("%d new video(s) found", len(files))
         for f in files[:limit]:
             try:
@@ -65,6 +76,10 @@ class Pipeline:
                 log.exception("failed: %s", f.name)
                 if not self.dry_run:
                     self.state.mark(f.id, f.name, "failed", repr(e))
+
+    def _before_since(self, f: SourceFile) -> bool:
+        shot = shot_time_from_name(f.name, self.tz) or f.created_time.astimezone(self.tz)
+        return shot.date().isoformat() < self.cfg.since
 
     # ------------------------------------------------------------------
     def process(self, f: SourceFile) -> None:
