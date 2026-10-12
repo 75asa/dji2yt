@@ -9,14 +9,14 @@ since = "2026-10-12"   # ignore videos shot before this date (avoid uploading th
 # Source: a folder synced by Google Drive for desktop (recommended on a Mac).
 # Renames sync back to Drive; date subfolders (20261012/) are scanned too.
 [local]
-path = "~/Library/CloudStorage/GoogleDrive-real.nagorid@gmail.com/マイドライブ/DJI Device/OsmoPocket4PTCWACN"
+path = "~/Library/CloudStorage/GoogleDrive-you@example.com/マイドライブ/DJI Device/<device-folder>"
 rename = true
 extensions = [".mp4"]
 min_age_minutes = 10   # skip files still syncing
 
 # ...or the Drive API (e.g. when running in the cloud). Use one or the other.
 # [drive]
-# folder_id = "1kGwGAhObyosm2aHiizjvqaPhDm9ctoHv"
+# folder_id = "<drive-folder-id>"
 # rename_on_drive = true
 # extensions = [".mp4"]
 
