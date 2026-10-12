@@ -1,0 +1,14 @@
+[project]
+name = "dji2yt"
+version = "0.1.0"
+description = "Auto-upload DJI videos from Google Drive to YouTube with playlists and tennis rally cuts"
+requires-python = ">=3.11"
+dependencies = [
+  "google-api-python-client>=2.0",
+  "google-auth-oauthlib>=1.0",
+  "librosa>=0.10",
+  "numpy",
+]
+
+[project.scripts]
+dji2yt = "dji2yt.main:main"
